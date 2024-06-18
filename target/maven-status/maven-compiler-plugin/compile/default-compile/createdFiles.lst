@@ -1,9 +1,0 @@
-com/bookstore/controller/MyBookListController.class
-com/bookstore/service/MyBookListService.class
-com/bookstore/controller/BookController.class
-com/bookstore/repository/MyBookRepository.class
-com/bookstore/entity/MyBookList.class
-com/bookstore/service/BookService.class
-com/bookstore/entity/Book.class
-com/bookstore/BookStoreApplication.class
-com/bookstore/repository/BookRepository.class
