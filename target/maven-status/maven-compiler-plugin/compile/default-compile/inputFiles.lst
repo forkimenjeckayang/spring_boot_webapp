@@ -1,0 +1,9 @@
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/controller/BookController.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/repository/BookRepository.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/repository/MyBookRepository.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/BookStoreApplication.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/service/BookService.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/entity/MyBookList.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/controller/MyBookListController.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/service/MyBookListService.java
+/home/onset/my_dev/spring_boot_webapp/src/main/java/com/bookstore/entity/Book.java
