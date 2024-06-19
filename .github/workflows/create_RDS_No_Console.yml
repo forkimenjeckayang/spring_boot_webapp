@@ -21,7 +21,7 @@ jobs:
             sudo ./aws/install
             else
             aws --version
-            aws --version 2>&1 | grep "aws-cli/2."  # Check if AWS CLI version 2 is installed
+            aws --version 2>&1 | grep "aws-cli/2."
             if [ $? -eq 0 ]; then
                 echo "AWS CLI version 2 is already installed."
             else
@@ -39,35 +39,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
           aws-region: us-east-1  
 
+          
       - name: Create RDS DB instance
         run: |
-            aws rds create-db-instance --db-instance-identifier Database4 --db-instance-class db.t3.micro --engine postgres --db-name my_db --allocated-storage 20 --port 5432 --master-username dbadmin --master-user-password admin12345 --publicly-accessible
+            aws rds create-db-instance --db-instance-identifier Database3 --db-instance-class db.t3.micro --engine postgres --db-name my_postgres_db --allocated-storage 20 --port 5432 --master-username dbadmin --master-user-password admin12345 --publicly-accessible
   
       - name: Wait for DB instance to be available
         run: |
-            aws rds wait db-instance-available --db-instance-identifier Database4
-  
-      - name: Get default VPC ID
-        id: get-default-vpc-id
-        run: |
-          vpc_id=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault==true].VpcId" --output text)
-          echo "Default VPC ID: $vpc_id"
-          echo "::set-output name=vpc-id::$vpc_id"
-
-      - name: Get default security group ID
-        id: get-default-security-group-id
-        run: |
-          vpc_id=${{ steps.get-default-vpc-id.outputs.vpc-id }}
-          security_group_id=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
-          echo "Default Security Group ID: $security_group_id"
-          echo "::set-output name=security-group-id::$security_group_id"
-
-      - name: Authorize ingress rule for PostgreSQL 
-        run: |
-          security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
-          aws ec2 authorize-security-group-ingress --group-id $security_group_id --protocol tcp --port 5432 --cidr 0.0.0.0/0
-
-      - name: Modify DB instance to use default security group
-        run: |
-          security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
-          aws rds modify-db-instance --db-instance-identifier Database4 --vpc-security-group-ids $security_group_id --apply-immediately
+            aws rds wait db-instance-available --db-instance-identifier Database3
