@@ -41,15 +41,15 @@ jobs:
 
       - name: Create RDS DB instance
         run: |
-            aws rds create-db-instance --db-instance-identifier Database5 --db-instance-class db.t3.micro --engine postgres --db-name my_db --allocated-storage 20 --port 5432 --master-username dbadmin --master-user-password admin12345 --publicly-accessible
+            aws rds create-db-instance --db-instance-identifier Database3 --db-instance-class db.t3.micro --engine postgres --db-name my_db --allocated-storage 20 --port 5432 --master-username dbadmin --master-user-password admin12345 --publicly-accessible
   
       - name: Wait for DB instance to be available
         run: |
-            aws rds wait db-instance-available --db-instance-identifier Database5
+            aws rds wait db-instance-available --db-instance-identifier Database3
   
-            - name: Get default security group ID
-            id: get-default-security-group-id
-            run: |
+      - name: Get default security group ID
+        id: get-default-security-group-id
+        run: |
               vpc_id=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault==true].VpcId" --output text)
               security_group_id=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
               echo "::set-output name=security-group-id::$security_group_id"
