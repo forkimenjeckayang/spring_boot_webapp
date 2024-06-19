@@ -21,6 +21,7 @@ jobs:
           aws_rds_db_enable: true
           aws_rds_db_name: bookrepodb
           aws_rds_db_user: dbadmin
+          aws_rds_db_password: ${{ secrets.DB_PASSWORD }}
           aws_rds_db_ingress_allow_all: true
           aws_rds_db_publicly_accessible: true
           aws_rds_db_engine: postgres
