@@ -20,8 +20,8 @@ jobs:
           sudo mv aws/awscli/awscli /usr/local/bin/aws
           sudo chmod 755 /usr/local/bin/aws
 
-      - name: Authenticate with AWS
-        uses: aws-actions/auth@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
@@ -37,4 +37,4 @@ jobs:
 
       - name: Modify VPC settings to allow public access
         run: |
-         aws ec2 modify-vpc-attribute --attribute vpc-peering --value true
+          aws ec2 modify-vpc-attribute --attribute vpc-peering --value true 
