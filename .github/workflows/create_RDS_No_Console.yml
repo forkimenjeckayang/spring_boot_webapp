@@ -62,7 +62,7 @@ jobs:
           echo "Default Security Group ID: $security_group_id"
           echo "::set-output name=security-group-id::$security_group_id"
 
-      - name: Authorize ingress rule for PostgreSQL
+      - name: Authorize ingress rule for PostgreSQL 
         run: |
           security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
           aws ec2 authorize-security-group-ingress --group-id $security_group_id --protocol tcp --port 5432 --cidr 0.0.0.0/0
