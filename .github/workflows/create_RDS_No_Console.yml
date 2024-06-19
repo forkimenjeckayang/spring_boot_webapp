@@ -45,7 +45,7 @@ jobs:
 
       - name: Update security group to allow incoming traffic
         run: |
-          aws ec2 authorize-security-group-ingress --group-name my-test-security-group --protocol tcp --port 5432 --cidr-ip 0.0.0.0/0
+          aws ec2 authorize-security-group-ingress --protocol tcp --port 5432 --cidr-ip 0.0.0.0/0
 
       - name: Modify VPC settings to allow public access
         run: |
