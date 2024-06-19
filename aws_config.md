@@ -76,7 +76,7 @@ spring.datasource.url=jdbc:postgresql://<endpoint>:<port>/<database_name>
 - If your application now runs with the AWS RDS postgres instance, then you can go ahead and build package and create your image on that configuration
 
 
-# Now you can follow up which the creation of your container on ECR before proceeding to ECS
+# Now you can follow up with the creation of your container on ECR before proceeding to ECS
 
 # ECS configuration
 
