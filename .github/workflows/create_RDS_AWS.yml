@@ -21,7 +21,6 @@ jobs:
           aws_rds_db_enable: true
           aws_rds_db_name: bookrepodb
           aws_rds_db_user: admin
-          aws_rds_db_password: ${{ secrets.DB_PASSWORD }}
           aws_rds_db_ingress_allow_all: true
           aws_rds_db_publicly_accessible: true
           aws_rds_db_engine: postgres
@@ -33,5 +32,5 @@ jobs:
           aws_rds_db_instance_class: db.t3.micro
           aws_vpc_id: vpc-01fb06fa9649cd1ea
           aws_resource_identifier: Database2
-          tf_state_bucket: book-resources
+          tf_state_bucket: book-resources-78732w5-654
           tf_state_file_name_append: rds-dev-postgresdb
