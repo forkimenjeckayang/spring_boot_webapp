@@ -1,0 +1,37 @@
+on:
+  push:
+    branches:
+      - "main" # change to the branch you wish to deploy from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - id: deploy
+        uses: bitovi/github-actions-deploy-rds@v0.1.5
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
+          aws_default_region: us-east-1 
+
+          aws_additional_tags: '{\"my\":\"test\",\"book\":\"db\"}'
+
+          tf_state_bucket_destroy: true
+
+          aws_rds_db_enable: true
+          aws_rds_db_name: bookrepodb
+          aws_rds_db_user: admin
+          aws_rds_db_password: ${{ secrets.DB_PASSWORD }}
+          aws_rds_db_ingress_allow_all: true
+          aws_rds_db_publicly_accessible: true
+          aws_rds_db_engine: postgres
+          aws_rds_db_port: 5432
+          aws_rds_db_multi_az: true
+          aws_rds_db_subnets: subnet-0c13da84b2891ea45,subnet-0a871b7a826e9a64e,subnet-0e5b6dd7e1ab04134,subnet-0e331e8f0958363a3,subnet-03849368ae53e9951,subnet-0df9ba85097d7c60a
+          aws_rds_db_allocated_storage: 10
+          aws_rds_db_max_allocated_storage: 20
+          aws_rds_db_instance_class: db.t3.micro
+          aws_vpc_id: vpc-01fb06fa9649cd1ea
+          aws_resource_identifier: Database2
+          tf_state_bucket: book-resources
+          tf_state_file_name_append: rds-dev-postgresdb
