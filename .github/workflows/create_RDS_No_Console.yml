@@ -1,0 +1,40 @@
+name: Deploy PostgreSQL RDS DB instance
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-rds-db:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install AWS CLI
+        run: |
+          curl -sSf https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o awscli.zip
+          unzip awscli.zip
+          sudo mv aws/awscli/awscli /usr/local/bin/aws
+          sudo chmod 755 /usr/local/bin/aws
+
+      - name: Authenticate with AWS
+        uses: aws-actions/auth@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
+          aws-region: us-east-1  
+
+      - name: Create RDS DB instance
+        run: |
+          aws rds create-db-instance --db-instance-identifier Database3 --db-instance-class db.t3.micro --db-engine postgres --db-instance-port 5432 --vpc-security-group-ids sg-12345678 --db-instance-name my-boo-test-db --db-instance-identifier my-postgres-db --master-username dbadmin --master-user-password admin12345
+
+      - name: Update security group to allow incoming traffic
+        run: |
+          aws ec2 authorize-security-group-ingress --group-name my-test-security-group --protocol tcp --port 5432 --cidr-ip 0.0.0.0/0
+
+      - name: Modify VPC settings to allow public access
+        run: |
+          aws ec2 modify-vpc-attribute --attribute vpc-peering --value true 
