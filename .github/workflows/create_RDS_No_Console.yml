@@ -21,11 +21,11 @@ jobs:
           sudo chmod 755 /usr/local/bin/aws
 
       - name: Authenticate with AWS
-        uses: aws-actions/auth@v1
+        uses: bitovi/github-actions-deploy-rds@v0.1.5
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
-          aws-region: us-east-1  
+          aws_access_key_id:  ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
+          aws_default_region: us-east-1  
 
       - name: Create RDS DB instance
         run: |
