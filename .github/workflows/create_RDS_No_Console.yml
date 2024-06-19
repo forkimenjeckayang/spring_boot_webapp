@@ -47,19 +47,27 @@ jobs:
         run: |
             aws rds wait db-instance-available --db-instance-identifier Database3
   
+      - name: Get default VPC ID
+        id: get-default-vpc-id
+        run: |
+          vpc_id=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault==true].VpcId" --output text)
+          echo "Default VPC ID: $vpc_id"
+          echo "::set-output name=vpc-id::$vpc_id"
+
       - name: Get default security group ID
         id: get-default-security-group-id
         run: |
-              vpc_id=$(aws ec2 describe-vpcs --query "Vpcs[?IsDefault==true].VpcId" --output text)
-              security_group_id=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
-              echo "::set-output name=security-group-id::$security_group_id"
-    
+          vpc_id=${{ steps.get-default-vpc-id.outputs.vpc-id }}
+          security_group_id=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$vpc_id" "Name=group-name,Values=default" --query "SecurityGroups[0].GroupId" --output text)
+          echo "Default Security Group ID: $security_group_id"
+          echo "::set-output name=security-group-id::$security_group_id"
+
       - name: Authorize ingress rule for PostgreSQL
         run: |
-              security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
-              aws ec2 authorize-security-group-ingress --group-id $security_group_id --protocol tcp --port 5432 --cidr 0.0.0.0/0
-    
+          security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
+          aws ec2 authorize-security-group-ingress --group-id $security_group_id --protocol tcp --port 5432 --cidr 0.0.0.0/0
+
       - name: Modify DB instance to use default security group
         run: |
-              security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
-              aws rds modify-db-instance --db-instance-identifier Database4 --vpc-security-group-ids $security_group_id --apply-immediately
+          security_group_id=${{ steps.get-default-security-group-id.outputs.security-group-id }}
+          aws rds modify-db-instance --db-instance-identifier Database4 --vpc-security-group-ids $security_group_id --apply-immediately
