@@ -97,29 +97,45 @@ jobs:
             MEMORY=$(echo $CURRENT_TASK_DEF | jq -r '.memory // empty')
             PID_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.pidMode // empty')
             IPC_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode // empty')
-            
-            # Handle proxyConfiguration
+
+            # Handle optional proxyConfiguration
             PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration // empty')
             if [ "$PROXY_CONFIGURATION" != "empty" ]; then
               CONTAINER_NAME=$(echo $PROXY_CONFIGURATION | jq -r '.containerName // empty')
               if [ "$CONTAINER_NAME" = "empty" ]; then
                 PROXY_CONFIGURATION=$(echo $PROXY_CONFIGURATION | jq '. + {containerName: "default-container"}')  # Replace "default-container" with an appropriate value
               fi
+              PROXY_CONFIGURATION="--proxy-configuration '$PROXY_CONFIGURATION'"
+            else
+              PROXY_CONFIGURATION=""
             fi
             
-            # Handle inferenceAccelerators
-            INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // []')
+            # Handle optional inferenceAccelerators
+            INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // empty')
+            if [ "$INFERENCE_ACCELERATORS" != "empty" ]; then
+              INFERENCE_ACCELERATORS="--inference-accelerators '$INFERENCE_ACCELERATORS'"
+            else
+              INFERENCE_ACCELERATORS=""
+            fi
             
-            # Handle ephemeralStorage
+            # Handle optional ephemeralStorage
             EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage // empty')
             if [ "$EPHEMERAL_STORAGE" != "empty" ]; then
               SIZE_IN_GIB=$(echo $EPHEMERAL_STORAGE | jq -r '.sizeInGiB // empty')
               if [ "$SIZE_IN_GIB" = "empty" ]; then
                 EPHEMERAL_STORAGE=$(echo $EPHEMERAL_STORAGE | jq '. + {sizeInGiB: 20}')  # Replace "20" with an appropriate value
               fi
+              EPHEMERAL_STORAGE="--ephemeral-storage '$EPHEMERAL_STORAGE'"
+            else
+              EPHEMERAL_STORAGE=""
             fi
             
             RUNTIME_PLATFORM=$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform // {}')
+            if [ "$RUNTIME_PLATFORM" != "{}" ]; then
+              RUNTIME_PLATFORM="--runtime-platform '$RUNTIME_PLATFORM'"
+            else
+              RUNTIME_PLATFORM=""
+            fi
 
             # Build the new task definition JSON
             NEW_TASK_DEF=$(jq -n \
@@ -135,10 +151,6 @@ jobs:
               --arg memory "$MEMORY" \
               --arg pidMode "$PID_MODE" \
               --arg ipcMode "$IPC_MODE" \
-              --argjson proxyConfiguration "$PROXY_CONFIGURATION" \
-              --argjson inferenceAccelerators "$INFERENCE_ACCELERATORS" \
-              --argjson ephemeralStorage "$EPHEMERAL_STORAGE" \
-              --argjson runtimePlatform "$RUNTIME_PLATFORM" \
               '{ 
                 family: $family,
                 taskRoleArn: $taskRoleArn,
@@ -151,11 +163,7 @@ jobs:
                 cpu: $cpu,
                 memory: $memory,
                 pidMode: $pidMode,
-                ipcMode: $ipcMode,
-                proxyConfiguration: if $proxyConfiguration == "empty" then empty else $proxyConfiguration end,
-                inferenceAccelerators: $inferenceAccelerators,
-                ephemeralStorage: if $ephemeralStorage == "empty" then empty else $ephemeralStorage end,
-                runtimePlatform: $runtimePlatform
+                ipcMode: $ipcMode
               }')
 
             # Save the new task definition to a file
@@ -168,6 +176,10 @@ jobs:
             # Register the new task definition revision
             NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
               --cli-input-json file://new-task-def.json \
+              $PROXY_CONFIGURATION \
+              $INFERENCE_ACCELERATORS \
+              $EPHEMERAL_STORAGE \
+              $RUNTIME_PLATFORM \
               --query 'taskDefinition.taskDefinitionArn' \
               --output text)
             
