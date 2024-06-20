@@ -84,42 +84,62 @@ jobs:
             UPDATED_CONTAINER_DEFINITIONS=$(echo $CURRENT_TASK_DEF | jq --arg IMAGE "$IMAGE" --arg NAME "${{ env.CONTAINER_NAME }}" '.containerDefinitions | map(if .name == $NAME then .image = $IMAGE else . end)')
             
             # Add memory or memoryReservation to the container definition
-            UPDATED_CONTAINER_DEFINITIONS=$(echo $UPDATED_CONTAINER_DEFINITIONS | jq '.[].memory = 512')  # Replace '512' with your desired memory value in MiB
+            UPDATED_CONTAINER_DEFINITIONS=$(echo $UPDATED_CONTAINER_DEFINITIONS | jq '.[0].memory = 512')  # Replace '512' with your desired memory value in MiB
             
-            # Debug: Output updated container definitions to log
-            echo "Updated container definitions: $UPDATED_CONTAINER_DEFINITIONS"
-            
-            # Create a temporary JSON file with updated container definitions
-            echo "{\"containerDefinitions\": $UPDATED_CONTAINER_DEFINITIONS}" > updated-containers.json
+            # Build the new task definition JSON
+            NEW_TASK_DEF=$(jq -n \
+              --arg family "$FAMILY" \
+              --argjson containerDefinitions "$UPDATED_CONTAINER_DEFINITIONS" \
+              --arg taskRoleArn "$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn')" \
+              --arg executionRoleArn "$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn')" \
+              --arg networkMode "$(echo $CURRENT_TASK_DEF | jq -r '.networkMode')" \
+              --argjson volumes "$(echo $CURRENT_TASK_DEF | jq '.volumes')" \
+              --argjson placementConstraints "$(echo $CURRENT_TASK_DEF | jq '.placementConstraints')" \
+              --argjson requiresCompatibilities "$(echo $CURRENT_TASK_DEF | jq '.requiresCompatibilities')" \
+              --arg cpu "$(echo $CURRENT_TASK_DEF | jq -r '.cpu')" \
+              --arg memory "$(echo $CURRENT_TASK_DEF | jq -r '.memory')" \
+              --arg pidMode "$(echo $CURRENT_TASK_DEF | jq -r '.pidMode')" \
+              --arg ipcMode "$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode')" \
+              --argjson proxyConfiguration "$(echo $CURRENT_TASK_DEF | jq '.proxyConfiguration')" \
+              --argjson inferenceAccelerators "$(echo $CURRENT_TASK_DEF | jq '.inferenceAccelerators')" \
+              --argjson ephemeralStorage "$(echo $CURRENT_TASK_DEF | jq '.ephemeralStorage')" \
+              --argjson runtimePlatform "$(echo $CURRENT_TASK_DEF | jq '.runtimePlatform')" \
+              '{ 
+                family: $family,
+                taskRoleArn: $taskRoleArn,
+                executionRoleArn: $executionRoleArn,
+                networkMode: $networkMode,
+                containerDefinitions: $containerDefinitions,
+                volumes: $volumes,
+                placementConstraints: $placementConstraints,
+                requiresCompatibilities: $requiresCompatibilities,
+                cpu: $cpu,
+                memory: $memory,
+                pidMode: $pidMode,
+                ipcMode: $ipcMode,
+                proxyConfiguration: $proxyConfiguration,
+                inferenceAccelerators: $inferenceAccelerators,
+                ephemeralStorage: $ephemeralStorage,
+                runtimePlatform: $runtimePlatform
+              }')
+
+            # Save the new task definition to a file
+            echo "$NEW_TASK_DEF" > new-task-def.json
             
             # Debug: Check if the file exists and output its contents
-            ls -l updated-containers.json
-            cat updated-containers.json
+            ls -l new-task-def.json
+            cat new-task-def.json
             
             # Register the new task definition revision
             NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-              --family $FAMILY \
-              --task-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn')" \
-              --execution-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn')" \
-              --network-mode "$(echo $CURRENT_TASK_DEF | jq -r '.networkMode')" \
-              --container-definitions file://updated-containers.json \
-              --volumes "$(echo $CURRENT_TASK_DEF | jq -c '.volumes')" \
-              --placement-constraints "$(echo $CURRENT_TASK_DEF | jq -c '.placementConstraints')" \
-              --requires-compatibilities "$(echo $CURRENT_TASK_DEF | jq -c '.requiresCompatibilities')" \
-              --cpu "$(echo $CURRENT_TASK_DEF | jq -r '.cpu')" \
-              --memory "$(echo $CURRENT_TASK_DEF | jq -r '.memory')" \
-              --pid-mode "$(echo $CURRENT_TASK_DEF | jq -r '.pidMode')" \
-              --ipc-mode "$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode')" \
-              --proxy-configuration "$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration')" \
-              --inference-accelerators "$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators')" \
-              --ephemeral-storage "$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage')" \
-              --runtime-platform "$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform')" \
+              --cli-input-json file://new-task-def.json \
               --query 'taskDefinition.taskDefinitionArn' \
               --output text)
             
             # Update ECS service to use the new task definition revision
             aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
             aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
 
       
         # - name: Update ECS service with new image
