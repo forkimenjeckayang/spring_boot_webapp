@@ -86,24 +86,40 @@ jobs:
             # Add memory or memoryReservation to the container definition
             UPDATED_CONTAINER_DEFINITIONS=$(echo $UPDATED_CONTAINER_DEFINITIONS | jq '.[0].memory = 512')  # Replace '512' with your desired memory value in MiB
             
+            # Provide default values for optional parameters
+            TASK_ROLE_ARN=$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn // empty')
+            EXECUTION_ROLE_ARN=$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn // empty')
+            NETWORK_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.networkMode // empty')
+            VOLUMES=$(echo $CURRENT_TASK_DEF | jq -c '.volumes // []')
+            PLACEMENT_CONSTRAINTS=$(echo $CURRENT_TASK_DEF | jq -c '.placementConstraints // []')
+            REQUIRES_COMPATIBILITIES=$(echo $CURRENT_TASK_DEF | jq -c '.requiresCompatibilities // []')
+            CPU=$(echo $CURRENT_TASK_DEF | jq -r '.cpu // empty')
+            MEMORY=$(echo $CURRENT_TASK_DEF | jq -r '.memory // empty')
+            PID_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.pidMode // empty')
+            IPC_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode // empty')
+            PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration // {}')
+            INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // []')
+            EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage // {}')
+            RUNTIME_PLATFORM=$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform // {}')
+
             # Build the new task definition JSON
             NEW_TASK_DEF=$(jq -n \
               --arg family "$FAMILY" \
               --argjson containerDefinitions "$UPDATED_CONTAINER_DEFINITIONS" \
-              --arg taskRoleArn "$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn')" \
-              --arg executionRoleArn "$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn')" \
-              --arg networkMode "$(echo $CURRENT_TASK_DEF | jq -r '.networkMode')" \
-              --argjson volumes "$(echo $CURRENT_TASK_DEF | jq '.volumes')" \
-              --argjson placementConstraints "$(echo $CURRENT_TASK_DEF | jq '.placementConstraints')" \
-              --argjson requiresCompatibilities "$(echo $CURRENT_TASK_DEF | jq '.requiresCompatibilities')" \
-              --arg cpu "$(echo $CURRENT_TASK_DEF | jq -r '.cpu')" \
-              --arg memory "$(echo $CURRENT_TASK_DEF | jq -r '.memory')" \
-              --arg pidMode "$(echo $CURRENT_TASK_DEF | jq -r '.pidMode')" \
-              --arg ipcMode "$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode')" \
-              --argjson proxyConfiguration "$(echo $CURRENT_TASK_DEF | jq '.proxyConfiguration')" \
-              --argjson inferenceAccelerators "$(echo $CURRENT_TASK_DEF | jq '.inferenceAccelerators')" \
-              --argjson ephemeralStorage "$(echo $CURRENT_TASK_DEF | jq '.ephemeralStorage')" \
-              --argjson runtimePlatform "$(echo $CURRENT_TASK_DEF | jq '.runtimePlatform')" \
+              --arg taskRoleArn "$TASK_ROLE_ARN" \
+              --arg executionRoleArn "$EXECUTION_ROLE_ARN" \
+              --arg networkMode "$NETWORK_MODE" \
+              --argjson volumes "$VOLUMES" \
+              --argjson placementConstraints "$PLACEMENT_CONSTRAINTS" \
+              --argjson requiresCompatibilities "$REQUIRES_COMPATIBILITIES" \
+              --arg cpu "$CPU" \
+              --arg memory "$MEMORY" \
+              --arg pidMode "$PID_MODE" \
+              --arg ipcMode "$IPC_MODE" \
+              --argjson proxyConfiguration "$PROXY_CONFIGURATION" \
+              --argjson inferenceAccelerators "$INFERENCE_ACCELERATORS" \
+              --argjson ephemeralStorage "$EPHEMERAL_STORAGE" \
+              --argjson runtimePlatform "$RUNTIME_PLATFORM" \
               '{ 
                 family: $family,
                 taskRoleArn: $taskRoleArn,
@@ -139,6 +155,7 @@ jobs:
             # Update ECS service to use the new task definition revision
             aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
             aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
 
 
       
