@@ -7,8 +7,7 @@ env:
     ECR_REPOSITORY: testaction
     ECS_SERVICE: mytestservice
     ECS_CLUSTER: myclustertest
-    ECS_TASK_DEFINITION: mytesttd
-    CONTAINER_NAME: "mytestcontainer"
+    CONTAINER_NAME: mytestcontainer
 jobs:
     deploy:
       name: Deploy
@@ -67,132 +66,27 @@ jobs:
                   fi
                   fi
 
-        - name: Update ECS service with new image
+        - name: Download task definition 
           run: |
-            IMAGE="${{ env.IMAGE }}"
-            
-            # Fetch the current task definition
-            CURRENT_TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query 'taskDefinition' --output json)
-            
-            # Debug: Output current task definition to log
-            echo "Current task definition: $CURRENT_TASK_DEF"
-            
-            # Extract the task definition family
-            FAMILY=$(echo $CURRENT_TASK_DEF | jq -r '.family')
-            
-            # Get the container definitions and update the image
-            UPDATED_CONTAINER_DEFINITIONS=$(echo $CURRENT_TASK_DEF | jq --arg IMAGE "$IMAGE" --arg NAME "${{ env.CONTAINER_NAME }}" '.containerDefinitions | map(if .name == $NAME then .image = $IMAGE else . end)')
-            
-            # Add memory or memoryReservation to the container definition
-            UPDATED_CONTAINER_DEFINITIONS=$(echo $UPDATED_CONTAINER_DEFINITIONS | jq '.[0].memory = 512')  # Replace '512' with your desired memory value in MiB
-            
-            # Provide default values for optional parameters
-            TASK_ROLE_ARN=$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn // empty')
-            EXECUTION_ROLE_ARN=$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn // empty')
-            NETWORK_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.networkMode // empty')
-            VOLUMES=$(echo $CURRENT_TASK_DEF | jq -c '.volumes // []')
-            PLACEMENT_CONSTRAINTS=$(echo $CURRENT_TASK_DEF | jq -c '.placementConstraints // []')
-            REQUIRES_COMPATIBILITIES=$(echo $CURRENT_TASK_DEF | jq -c '.requiresCompatibilities // []')
-            CPU=$(echo $CURRENT_TASK_DEF | jq -r '.cpu // empty')
-            MEMORY=$(echo $CURRENT_TASK_DEF | jq -r '.memory // empty')
-            PID_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.pidMode // empty')
-            IPC_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode // empty')
-
-            # Handle optional proxyConfiguration
-            PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration // empty')
-            if [ "$PROXY_CONFIGURATION" != "empty" ]; then
-              CONTAINER_NAME=$(echo $PROXY_CONFIGURATION | jq -r '.containerName // empty')
-              if [ "$CONTAINER_NAME" = "empty" ]; then
-                PROXY_CONFIGURATION=$(echo $PROXY_CONFIGURATION | jq '. + {containerName: "default-container"}')  # Replace "default-container" with an appropriate value
-              fi
-              PROXY_CONFIGURATION="--proxy-configuration $(echo $PROXY_CONFIGURATION | jq -c .)"
-            else
-              PROXY_CONFIGURATION=""
-            fi
-            
-            # Handle optional inferenceAccelerators
-            INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // empty')
-            if [ "$INFERENCE_ACCELERATORS" != "empty" ]; then
-              INFERENCE_ACCELERATORS="--inference-accelerators $(echo $INFERENCE_ACCELERATORS | jq -c .)"
-            else
-              INFERENCE_ACCELERATORS=""
-            fi
-            
-            # Handle optional ephemeralStorage
-            EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage // empty')
-            if [ "$EPHEMERAL_STORAGE" != "empty" ]; then
-              SIZE_IN_GIB=$(echo $EPHEMERAL_STORAGE | jq -r '.sizeInGiB // empty')
-              if [ "$SIZE_IN_GIB" = "empty" ]; then
-                EPHEMERAL_STORAGE=$(echo $EPHEMERAL_STORAGE | jq '. + {sizeInGiB: 20}')  # Replace "20" with an appropriate value
-              fi
-              EPHEMERAL_STORAGE="--ephemeral-storage $(echo $EPHEMERAL_STORAGE | jq -c .)"
-            else
-              EPHEMERAL_STORAGE=""
-            fi
-            
-            RUNTIME_PLATFORM=$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform // {}')
-            if [ "$RUNTIME_PLATFORM" != "{}" ]; then
-              RUNTIME_PLATFORM="--runtime-platform $(echo $RUNTIME_PLATFORM | jq -c .)"
-            else
-              RUNTIME_PLATFORM=""
-            fi
-
-            # Build the new task definition JSON
-            NEW_TASK_DEF=$(jq -n \
-              --arg family "$FAMILY" \
-              --argjson containerDefinitions "$UPDATED_CONTAINER_DEFINITIONS" \
-              --arg taskRoleArn "$TASK_ROLE_ARN" \
-              --arg executionRoleArn "$EXECUTION_ROLE_ARN" \
-              --arg networkMode "$NETWORK_MODE" \
-              --argjson volumes "$VOLUMES" \
-              --argjson placementConstraints "$PLACEMENT_CONSTRAINTS" \
-              --argjson requiresCompatibilities "$REQUIRES_COMPATIBILITIES" \
-              --arg cpu "$CPU" \
-              --arg memory "$MEMORY" \
-              --arg pidMode "$PID_MODE" \
-              --arg ipcMode "$IPC_MODE" \
-              '{ 
-                family: $family,
-                taskRoleArn: $taskRoleArn,
-                executionRoleArn: $executionRoleArn,
-                networkMode: $networkMode,
-                containerDefinitions: $containerDefinitions,
-                volumes: $volumes,
-                placementConstraints: $placementConstraints,
-                requiresCompatibilities: $requiresCompatibilities,
-                cpu: $cpu,
-                memory: $memory,
-                pidMode: $pidMode,
-                ipcMode: $ipcMode
-              }')
-
-            # Save the new task definition to a file
-            echo "$NEW_TASK_DEF" > new-task-def.json
-            
-            # Debug: Check if the file exists and output its contents
-            ls -l new-task-def.json
-            cat new-task-def.json
-            
-            # Register the new task definition revision
-            NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-              --cli-input-json file://new-task-def.json \
-              $PROXY_CONFIGURATION \
-              $INFERENCE_ACCELERATORS \
-              $EPHEMERAL_STORAGE \
-              $RUNTIME_PLATFORM \
-              --query 'taskDefinition.taskDefinitionArn' \
-              --output text)
-            
-            # Update ECS service to use the new task definition revision
-            aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
-            aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+            aws ecs describe-task-definition --task-definition mytesttd --query taskDefinition > task-definition.json
+        
+        - name: Fill in new image ID in task definition
+          id: task-def
+          uses: aws-actions/amazon-ecs-render-task-definition@v1
+          with:
+              task-definition: task-definition.json
+              container-name: ${{ env.CONTAINER_NAME }}
+              image: ${{ steps.build-image.outputs.IMAGE }}
+        
+        - name: Deploy Amazon ECS task definition
+          uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+          with:
+                task-definition: ${{ steps.task-def.outputs['task-definition'] }}
+                service: ${{ env.ECS_SERVICE }}
+                cluster: ${{ env.ECS_CLUSTER }}
 
 
-
-
-
-
-      
+       
         # - name: Update ECS service with new image
         #   run: |
         #             IMAGE="${{ env.IMAGE }}"
