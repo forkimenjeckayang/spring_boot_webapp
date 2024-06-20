@@ -102,7 +102,10 @@ jobs:
             if [ "$(echo $CURRENT_TASK_DEF | jq '.proxyConfiguration')" = "null" ]; then
               PROXY_CONFIGURATION='{}'
             else
-              PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration | .containerName // empty | if . == "" then empty else . end')
+              PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration')
+              if [ "$(echo $PROXY_CONFIGURATION | jq -r '.containerName // empty')" = "" ]; then
+                PROXY_CONFIGURATION=$(echo $PROXY_CONFIGURATION | jq '. + {containerName: "default-container"}')  # Replace "default-container" with an appropriate value
+              fi
             fi
             
             # Check and provide defaults for inferenceAccelerators
@@ -116,7 +119,10 @@ jobs:
             if [ "$(echo $CURRENT_TASK_DEF | jq '.ephemeralStorage')" = "null" ]; then
               EPHEMERAL_STORAGE='{}'
             else
-              EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage | .sizeInGiB // empty | if . == "" then empty else . end')
+              EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage')
+              if [ "$(echo $EPHEMERAL_STORAGE | jq -r '.sizeInGiB // empty')" = "" ]; then
+                EPHEMERAL_STORAGE=$(echo $EPHEMERAL_STORAGE | jq '. + {sizeInGiB: 20}')  # Replace "20" with an appropriate value
+              fi
             fi
             
             RUNTIME_PLATFORM=$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform // {}')
@@ -174,6 +180,7 @@ jobs:
             # Update ECS service to use the new task definition revision
             aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
             aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
 
 
 
