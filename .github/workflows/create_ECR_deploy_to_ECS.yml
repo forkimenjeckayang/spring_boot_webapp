@@ -48,30 +48,71 @@ jobs:
               docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
               echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_ENV
 
-        - name: Get current task definition
-          id: get-task-def
+        - name: Install AWS CLI
           run: |
-                aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} > current-task-def.json
+                  if ! command -v aws &> /dev/null; then
+                  curl -sSf "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                  unzip awscliv2.zip
+                  sudo ./aws/install
+                  else
+                  aws --version
+                  aws --version 2>&1 | grep "aws-cli/2."
+                  if [ $? -eq 0 ]; then
+                      echo "AWS CLI version 2 is already installed."
+                  else
+                      echo "Updating AWS CLI..."
+                      curl -sSf "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+                      unzip awscliv2.zip
+                      sudo ./aws/install --update
+                  fi
+                  fi
       
-        - name: Update task definition with new image
-          id: update-task-def
+        - name: Update ECS service with new image
           run: |
-                NEW_IMAGE="${{ env.IMAGE }}"
-                CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
-                jq --arg IMAGE "$NEW_IMAGE" --arg NAME "$CONTAINER_NAME" \
-                  '.taskDefinition.containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end)' \
-                  current-task-def.json > updated-task-def.json
-      
-        - name: Register updated task definition
-          id: register-task-def
-          run: |
-                aws ecs register-task-definition \
-                  --cli-input-json file://updated-task-def.json \
+                # Fetch the current task definition
+                CURRENT_TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }})
+                
+                # Extract the task definition family
+                FAMILY=$(echo $CURRENT_TASK_DEF | jq -r '.taskDefinition.family')
+                
+                # Get the current container definitions and update the image
+                CONTAINER_DEFINITIONS=$(echo $CURRENT_TASK_DEF | jq --arg IMAGE "$IMAGE" --arg NAME "${{ env.CONTAINER_NAME }}" '.taskDefinition.containerDefinitions | map(if .name == $NAME then .image = $IMAGE else . end)')
+                
+                # Register the new task definition revision with updated image
+                NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+                  --family $FAMILY \
+                  --container-definitions "$CONTAINER_DEFINITIONS" \
                   --query 'taskDefinition.taskDefinitionArn' \
-                  --output text > task-def-arn.txt
-                echo "TASK_DEF_ARN=$(cat task-def-arn.txt)" >> $GITHUB_ENV
+                  --output text)
       
-        - name: Deploy updated task definition
-          run: |
-                aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition ${{ env.TASK_DEF_ARN }}
+                # Update the ECS service to use the new task definition revision
+                aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
                 aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
+        # - name: Get current task definition
+        #   id: get-task-def
+        #   run: |
+        #         aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} > current-task-def.json
+      
+        # - name: Update task definition with new image
+        #   id: update-task-def
+        #   run: |
+        #         NEW_IMAGE="${{ env.IMAGE }}"
+        #         CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+        #         jq --arg IMAGE "$NEW_IMAGE" --arg NAME "$CONTAINER_NAME" \
+        #           '.taskDefinition.containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end)' \
+        #           current-task-def.json > updated-task-def.json
+      
+        # - name: Register updated task definition
+        #   id: register-task-def
+        #   run: |
+        #         aws ecs register-task-definition \
+        #           --cli-input-json file://updated-task-def.json \
+        #           --query 'taskDefinition.taskDefinitionArn' \
+        #           --output text > task-def-arn.txt
+        #         echo "TASK_DEF_ARN=$(cat task-def-arn.txt)" >> $GITHUB_ENV
+      
+        # - name: Deploy updated task definition
+        #   run: |
+        #         aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition ${{ env.TASK_DEF_ARN }}
+        #         aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
