@@ -105,7 +105,7 @@ jobs:
               if [ "$CONTAINER_NAME" = "empty" ]; then
                 PROXY_CONFIGURATION=$(echo $PROXY_CONFIGURATION | jq '. + {containerName: "default-container"}')  # Replace "default-container" with an appropriate value
               fi
-              PROXY_CONFIGURATION="--proxy-configuration '$PROXY_CONFIGURATION'"
+              PROXY_CONFIGURATION="--proxy-configuration $(echo $PROXY_CONFIGURATION | jq -c .)"
             else
               PROXY_CONFIGURATION=""
             fi
@@ -113,7 +113,7 @@ jobs:
             # Handle optional inferenceAccelerators
             INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // empty')
             if [ "$INFERENCE_ACCELERATORS" != "empty" ]; then
-              INFERENCE_ACCELERATORS="--inference-accelerators '$INFERENCE_ACCELERATORS'"
+              INFERENCE_ACCELERATORS="--inference-accelerators $(echo $INFERENCE_ACCELERATORS | jq -c .)"
             else
               INFERENCE_ACCELERATORS=""
             fi
@@ -125,14 +125,14 @@ jobs:
               if [ "$SIZE_IN_GIB" = "empty" ]; then
                 EPHEMERAL_STORAGE=$(echo $EPHEMERAL_STORAGE | jq '. + {sizeInGiB: 20}')  # Replace "20" with an appropriate value
               fi
-              EPHEMERAL_STORAGE="--ephemeral-storage '$EPHEMERAL_STORAGE'"
+              EPHEMERAL_STORAGE="--ephemeral-storage $(echo $EPHEMERAL_STORAGE | jq -c .)"
             else
               EPHEMERAL_STORAGE=""
             fi
             
             RUNTIME_PLATFORM=$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform // {}')
             if [ "$RUNTIME_PLATFORM" != "{}" ]; then
-              RUNTIME_PLATFORM="--runtime-platform '$RUNTIME_PLATFORM'"
+              RUNTIME_PLATFORM="--runtime-platform $(echo $RUNTIME_PLATFORM | jq -c .)"
             else
               RUNTIME_PLATFORM=""
             fi
@@ -186,6 +186,7 @@ jobs:
             # Update ECS service to use the new task definition revision
             aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
             aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
 
 
 
