@@ -82,25 +82,25 @@ jobs:
                     
                     # Register the new task definition revision
                      NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
-                    --family $FAMILY \
-                    --task-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn')" \
-                    --execution-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn')" \
-                    --network-mode "$(echo $CURRENT_TASK_DEF | jq -r '.networkMode')" \
-                    --container-definitions file://updated-containers.json \
-                    --volumes "$(echo $CURRENT_TASK_DEF | jq -c '.volumes')" \
-                    --placement-constraints "$(echo $CURRENT_TASK_DEF | jq -c '.placementConstraints')" \
-                    --requires-compatibilities "$(echo $CURRENT_TASK_DEF | jq -c '.requiresCompatibilities')" \
-                    --cpu "$(echo $CURRENT_TASK_DEF | jq -r '.cpu')" \
-                    --memory "$(echo $CURRENT_TASK_DEF | jq -r '.memory')" \
-                    --tags "$(echo $CURRENT_TASK_DEF | jq -c '.tags')" \
-                    --pid-mode "$(echo $CURRENT_TASK_DEF | jq -r '.pidMode')" \
-                    --ipc-mode "$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode')" \
-                    --proxy-configuration "$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration')" \
-                    --inference-accelerators "$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators')" \
-                    --ephemeral-storage "$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage')" \
-                    --runtime-platform "$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform')" \
-                    --query 'taskDefinition.taskDefinitionArn' \
-                    --output text)
+                        --family $FAMILY \
+                        --task-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.taskRoleArn')" \
+                        --execution-role-arn "$(echo $CURRENT_TASK_DEF | jq -r '.executionRoleArn')" \
+                        --network-mode "$(echo $CURRENT_TASK_DEF | jq -r '.networkMode')" \
+                        --container-definitions file://updated-containers.json \
+                        --volumes "$(echo $CURRENT_TASK_DEF | jq -c '.volumes')" \
+                        --placement-constraints "$(echo $CURRENT_TASK_DEF | jq -c '.placementConstraints')" \
+                        --requires-compatibilities "$(echo $CURRENT_TASK_DEF | jq -c '.requiresCompatibilities')" \
+                        --cpu "$(echo $CURRENT_TASK_DEF | jq -r '.cpu')" \
+                        --memory "$(echo $CURRENT_TASK_DEF | jq -r '.memory')" \
+                        --tags "$(echo $CURRENT_TASK_DEF | jq -c '.tags')" \
+                        --pid-mode "$(echo $CURRENT_TASK_DEF | jq -r '.pidMode')" \
+                        --ipc-mode "$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode')" \
+                        --proxy-configuration "$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration')" \
+                        --inference-accelerators "$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators')" \
+                        --ephemeral-storage "$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage')" \
+                        --runtime-platform "$(echo $CURRENT_TASK_DEF | jq -c '.runtimePlatform')" \
+                        --query 'taskDefinition.taskDefinitionArn' \
+                        --output text)
           
                     # Update ECS service to use the new task definition revision
                     aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
