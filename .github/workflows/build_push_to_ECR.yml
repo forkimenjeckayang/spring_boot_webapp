@@ -34,16 +34,11 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2 
 
-      - name: Delete previous images in ECR
-        run: |
-          REPO_NAME=${{ secrets.REPO_NAME }}
-          IMAGES=$(aws ecr list-images --repository-name $REPO_NAME --query 'imageIds[*]' --output json)
-          aws ecr batch-delete-image --repository-name $REPO_NAME --image-ids "$IMAGES"
-
       - name: Build, tag, and push the image to Amazon ECR
+        id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.REPO_NAME }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest 
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
