@@ -98,29 +98,23 @@ jobs:
             PID_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.pidMode // empty')
             IPC_MODE=$(echo $CURRENT_TASK_DEF | jq -r '.ipcMode // empty')
             
-            # Check and provide defaults for proxyConfiguration
-            if [ "$(echo $CURRENT_TASK_DEF | jq '.proxyConfiguration')" = "null" ]; then
-              PROXY_CONFIGURATION='{}'
-            else
-              PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration')
-              if [ "$(echo $PROXY_CONFIGURATION | jq -r '.containerName // empty')" = "" ]; then
+            # Handle proxyConfiguration
+            PROXY_CONFIGURATION=$(echo $CURRENT_TASK_DEF | jq -c '.proxyConfiguration // empty')
+            if [ "$PROXY_CONFIGURATION" != "empty" ]; then
+              CONTAINER_NAME=$(echo $PROXY_CONFIGURATION | jq -r '.containerName // empty')
+              if [ "$CONTAINER_NAME" = "empty" ]; then
                 PROXY_CONFIGURATION=$(echo $PROXY_CONFIGURATION | jq '. + {containerName: "default-container"}')  # Replace "default-container" with an appropriate value
               fi
             fi
             
-            # Check and provide defaults for inferenceAccelerators
-            if [ "$(echo $CURRENT_TASK_DEF | jq '.inferenceAccelerators')" = "null" ]; then
-              INFERENCE_ACCELERATORS='[]'
-            else
-              INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators')
-            fi
+            # Handle inferenceAccelerators
+            INFERENCE_ACCELERATORS=$(echo $CURRENT_TASK_DEF | jq -c '.inferenceAccelerators // []')
             
-            # Check and provide defaults for ephemeralStorage
-            if [ "$(echo $CURRENT_TASK_DEF | jq '.ephemeralStorage')" = "null" ]; then
-              EPHEMERAL_STORAGE='{}'
-            else
-              EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage')
-              if [ "$(echo $EPHEMERAL_STORAGE | jq -r '.sizeInGiB // empty')" = "" ]; then
+            # Handle ephemeralStorage
+            EPHEMERAL_STORAGE=$(echo $CURRENT_TASK_DEF | jq -c '.ephemeralStorage // empty')
+            if [ "$EPHEMERAL_STORAGE" != "empty" ]; then
+              SIZE_IN_GIB=$(echo $EPHEMERAL_STORAGE | jq -r '.sizeInGiB // empty')
+              if [ "$SIZE_IN_GIB" = "empty" ]; then
                 EPHEMERAL_STORAGE=$(echo $EPHEMERAL_STORAGE | jq '. + {sizeInGiB: 20}')  # Replace "20" with an appropriate value
               fi
             fi
@@ -158,9 +152,9 @@ jobs:
                 memory: $memory,
                 pidMode: $pidMode,
                 ipcMode: $ipcMode,
-                proxyConfiguration: $proxyConfiguration,
+                proxyConfiguration: if $proxyConfiguration == "empty" then empty else $proxyConfiguration end,
                 inferenceAccelerators: $inferenceAccelerators,
-                ephemeralStorage: $ephemeralStorage,
+                ephemeralStorage: if $ephemeralStorage == "empty" then empty else $ephemeralStorage end,
                 runtimePlatform: $runtimePlatform
               }')
 
@@ -180,6 +174,7 @@ jobs:
             # Update ECS service to use the new task definition revision
             aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition $NEW_TASK_DEF_ARN
             aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
+
 
 
 
