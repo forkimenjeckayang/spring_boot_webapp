@@ -1,0 +1,68 @@
+on:
+    push:
+      branches:
+        - main
+env:
+    AWS_REGION: us-east-1
+    ECR_REPOSITORY: testaction
+    ECS_SERVICE: mytestservice
+    ECS_CLUSTER: myclustertest
+    ECS_TASK_DEFINITION: mytesttd
+    CONTAINER_NAME: "mytestcontainer"
+jobs:
+    deploy:
+      name: Deploy
+      runs-on: ubuntu-latest
+      environment: development
+      steps:
+        - name: Checkout
+          uses: actions/checkout@v4
+
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v4 
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY_ID1 }}
+            aws-region: ${{env.AWS_REGION}}
+
+        - name: Login to Amazon ECR
+          id: login-ecr
+          uses: aws-actions/amazon-ecr-login@v2 
+    
+        - name: Build, tag, and push the image to Amazon ECR
+          id: build-image
+          env:
+              ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+              ECR_REPOSITORY: ${{ secrets.REPO_NAME }}
+          run: |
+              docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+              docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+              echo "IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_ENV
+
+        - name: Get current task definition
+          id: get-task-def
+          run: |
+                aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} > current-task-def.json
+      
+        - name: Update task definition with new image
+          id: update-task-def
+          run: |
+                NEW_IMAGE="${{ env.IMAGE }}"
+                CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+                jq --arg IMAGE "$NEW_IMAGE" --arg NAME "$CONTAINER_NAME" \
+                  '.taskDefinition.containerDefinitions |= map(if .name == $NAME then .image = $IMAGE else . end)' \
+                  current-task-def.json > updated-task-def.json
+      
+        - name: Register updated task definition
+          id: register-task-def
+          run: |
+                aws ecs register-task-definition \
+                  --cli-input-json file://updated-task-def.json \
+                  --query 'taskDefinition.taskDefinitionArn' \
+                  --output text > task-def-arn.txt
+                echo "TASK_DEF_ARN=$(cat task-def-arn.txt)" >> $GITHUB_ENV
+      
+        - name: Deploy updated task definition
+          run: |
+                aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition ${{ env.TASK_DEF_ARN }}
+                aws ecs wait services-stable --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }}
