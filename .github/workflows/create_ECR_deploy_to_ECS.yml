@@ -7,7 +7,7 @@ env:
     ECR_REPOSITORY: testaction
     ECS_SERVICE: mytestservice
     ECS_CLUSTER: myclustertest
-    CONTAINER_NAME: mytestcontainer
+    CONTAINER_NAME: "testactioncontainer"
 jobs:
     deploy:
       name: Deploy
